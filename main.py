@@ -1,5 +1,4 @@
 import os
-import asyncio
 from io import BytesIO
 from telegram import Update
 from telegram.ext import (
@@ -176,10 +175,7 @@ Answer in Gujarati, friendly and short.
 
         try:
 
-            response = await asyncio.to_thread(
-                model.generate_content,
-                prompt
-            )
+            response = model.generate_content(prompt)
 
             bot_text = (
                 response.text.strip()
