@@ -94,3 +94,6 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+  git add main.py
+  git commit -m "Fix async main" 
+  git push origin main
