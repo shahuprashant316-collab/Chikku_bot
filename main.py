@@ -1,5 +1,7 @@
 import os
 import asyncio
+import nest_asyncio
+nest_asyncio.apply()
 from io import BytesIO
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
@@ -93,4 +95,4 @@ async def main():
     await app.run_polling()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
