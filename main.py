@@ -90,10 +90,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.ALL, handle_message))
     print("Chikku bot is running...")
-    await app.run_polling()  # <- aa `await` must che
+    await app.run_polling()
 
 if __name__ == '__main__':
     asyncio.run(main())
-  git add main.py
-  git commit -m "Fix async main" 
-  git push origin main
