@@ -1,10 +1,12 @@
 import os
+import asyncio
 from io import BytesIO
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
-    MessageHandler,
     CommandHandler,
+    MessageHandler,
     ContextTypes,
     filters
 )
@@ -13,214 +15,117 @@ import google.generativeai as genai
 from gtts import gTTS
 from duckduckgo_search import DDGS
 
+# =========================
+# CONFIG
+# =========================
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN missing")
-
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY missing")
-
 genai.configure(api_key=GEMINI_API_KEY)
 
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-chat_memory = {}
-
-
-def duckduckgo_search(query):
-
-    try:
-
-        with DDGS() as ddgs:
-
-            results = list(ddgs.text(query, max_results=3))
-
-            if results:
-
-                output = []
-
-                for r in results:
-
-                    title = r.get("title", "")
-                    body = str(r.get("body", ""))[:150]
-
-                    output.append(f"• {title}: {body}")
-
-                return "\n".join(output)
-
-    except Exception as e:
-
-        print(e)
-
-    return None
-
-
-async def speak_voice(text, update):
-
-    try:
-
-        clean_text = text[:250]
-
-        tts = gTTS(
-            text=clean_text,
-            lang="gu",
-            slow=False,
-            tld="co.in"
-        )
-
-        audio_fp = BytesIO()
-
-        tts.write_to_fp(audio_fp)
-        audio_fp.seek(0)
-
-        await update.message.reply_audio(
-            audio=audio_fp,
-            filename="voice.mp3",
-            title="Chikku Voice Reply"
-        )
-
-    except Exception as e:
-
-        print(e)
-
-        await update.message.reply_text(text)
-
+# =========================
+# START COMMAND
+# =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user_id = update.effective_user.id
-
-    chat_memory[user_id] = []
-
-    await update.message.reply_text("Chikku")
-
-    await speak_voice(
-        "Kem cho? Hu Chikku, taro digital madadgar.",
-        update
+    await update.message.reply_text(
+        "👋 Kem cho!\nHu Chikku AI Bot chu 🤖\nGujarati ma vaat karo."
     )
 
+# =========================
+# GOOGLE SEARCH
+# =========================
+
+def search_web(query):
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=3))
+
+        if not results:
+            return "Koi result malyo nathi."
+
+        text = ""
+
+        for r in results:
+            text += f"\n🔹 {r['title']}\n{r['body']}\n"
+
+        return text
+
+    except Exception as e:
+        return f"Search error: {e}"
+
+# =========================
+# TEXT MESSAGE
+# =========================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    user_id = update.effective_user.id
+    user_text = update.message.text
 
-    if user_id not in chat_memory:
-
-        chat_memory[user_id] = []
-
-    if update.message.voice:
-
-        user_text = "Tame voice moklyu."
-
-    elif update.message.photo:
-
-        user_text = "Tame photo moklyu."
-
-    else:
-
-        user_text = update.message.text if update.message.text else ""
-
-    text_lower = user_text.lower()
-
-    if any(word in text_lower for word in [
-        "taru name",
-        "taro name",
-        "chiku",
-        "chikku",
-        "kon chu"
-    ]):
-
-        bot_text = "Haan bhai, maru name Chikku che 😊"
-
-    elif any(word in text_lower for word in [
-        "weather",
-        "news",
-        "market",
-        "bhav",
-        "samachar"
-    ]):
-
-        search_result = duckduckgo_search(user_text + " India")
-
-        if search_result:
-
-            prompt = f"""
-User: {user_text}
-
-Live data:
-{search_result}
-
-Answer in Gujarati.
-"""
-
-        else:
-
-            prompt = f"""
-User: {user_text}
-
-Answer in Gujarati.
-"""
-
-    else:
+    try:
+        web_result = search_web(user_text)
 
         prompt = f"""
-User: {user_text}
+        User question:
+        {user_text}
 
-Answer in Gujarati, friendly and short.
-"""
+        Web data:
+        {web_result}
 
-    if 'bot_text' not in locals():
+        Gujarati ma short ane useful jawab aapo.
+        """
 
-        try:
+        response = model.generate_content(prompt)
 
-            response = model.generate_content(prompt)
+        answer = response.text
 
-            bot_text = (
-                response.text.strip()
-                if hasattr(response, "text") and response.text
-                else "Mane jawab malyo nathi."
-            )
+        await update.message.reply_text(answer)
 
-        except Exception as e:
+        # Voice Reply
+        tts = gTTS(answer, lang="gu")
 
-            print(e)
+        audio_file = BytesIO()
+        tts.write_to_fp(audio_file)
 
-            bot_text = "Error aavyo bhai."
+        audio_file.seek(0)
 
-    chat_memory[user_id].append({
-        "user": user_text,
-        "bot": bot_text
-    })
+        await update.message.reply_voice(voice=audio_file)
 
-    await speak_voice(bot_text, update)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
 
+# =========================
+# MAIN FUNCTION
+# =========================
 
-def main():
+async def main():
+
+    print("🤖 Chikku bot is running...")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(
-        CommandHandler("start", start)
-    )
+    app.add_handler(CommandHandler("start", start))
 
     app.add_handler(
-        MessageHandler(
-            (
-                filters.TEXT |
-                filters.VOICE |
-                filters.PHOTO
-            ) & ~filters.COMMAND,
-            handle_message
-        )
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
     )
 
-    print("Chikku bot is running...")
+    await app.initialize()
 
-    app.run_polling()
+    await app.start()
 
+    await app.updater.start_polling()
+
+    while True:
+        await asyncio.sleep(1)
+
+# =========================
+# RUN BOT
+# =========================
 
 if __name__ == "__main__":
+    asyncio.run(main())
 
-    main()
