@@ -2,3 +2,4 @@ python-telegram-bot==20.7
 google-generativeai
 gTTS==2.5.1
 duckduckgo-search
+python-telegram-bot==21.7
