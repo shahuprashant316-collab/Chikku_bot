@@ -13,7 +13,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-2.5-flash")
 
-# Memory for chat history
 chat_memory = {}
 
 def duckduckgo_search(query):
@@ -91,7 +90,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.ALL, handle_message))
     print("Chikku bot is running...")
-    await app.run_polling()
+    await app.run_polling()  # <- aa `await` must che
 
 if __name__ == '__main__':
     asyncio.run(main())
