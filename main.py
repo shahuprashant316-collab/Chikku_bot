@@ -93,7 +93,5 @@ async def main():
     app.add_handler(MessageHandler(filters.ALL, handle_message))
     print("Chikku bot is running...")
     await app.run_polling()
-
-if __name__ == '__main__':
-    
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
